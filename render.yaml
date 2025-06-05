@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: swiftsync
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn flask_api:app --config gunicorn_config.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: PYTHONUNBUFFERED
+        value: true
+    plan: free
+    region: oregon  # Choose a region closest to your users
