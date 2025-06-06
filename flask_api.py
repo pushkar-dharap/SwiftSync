@@ -110,35 +110,28 @@ def process_invoice():
             # Log the file details
             logger.info(f"Sending file: {filename} (size: {file_size} bytes)")
             
-            # Create a file-like object to stream the file
-            def generate():
-                with open(output_path, 'rb') as f:
-                    while True:
-                        data = f.read(4096)  # Read in chunks
-                        if not data:
-                            break
-                        yield data
-                
-                # Clean up the file after streaming is complete
-                try:
-                    os.remove(output_path)
-                    logger.info(f"Cleaned up output file: {output_path}")
-                except Exception as e:
-                    logger.warning(f"Warning: Could not clean up file {output_path}: {str(e)}")
-            
-            # Create the response with the generator
-            response = app.response_class(
-                response=generate(),
-                status=200,
+            # Use send_file which handles file streaming and cleanup automatically
+            response = send_file(
+                output_path,
+                as_attachment=True,
+                download_name=filename,
                 mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             
-            # Set headers
-            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-            response.headers['Content-Length'] = file_size
+            # Set cache control headers
             response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'
+            
+            # Clean up the file after the response is sent
+            @response.call_on_close
+            def cleanup():
+                try:
+                    if os.path.exists(output_path):
+                        os.remove(output_path)
+                        logger.info(f"Cleaned up output file: {output_path}")
+                except Exception as e:
+                    logger.warning(f"Warning: Could not clean up file {output_path}: {str(e)}")
             
             return response
             
