@@ -591,11 +591,21 @@ def update_excel_with_data(excel_path, sheet_name, data, existing_file_path=None
         
         # Try to load the workbook
         try:
-            wb = load_workbook(output_path, keep_vba=True)
+            # First try to load with keep_vba for .xlsm files
+            if excel_path.lower().endswith('.xlsm'):
+                wb = load_workbook(output_path, keep_vba=True)
+            else:
+                wb = load_workbook(output_path, keep_vba=False)
         except Exception as wb_error:
             safe_print(f"Error loading workbook: {str(wb_error)}")
-            # If loading fails, try creating a new Excel file as fallback
-            return create_new_excel_file(output_path, data)
+            # Try without keep_vba as fallback
+            try:
+                wb = load_workbook(output_path, keep_vba=False)
+                safe_print("Successfully loaded workbook without VBA support")
+            except Exception as wb_error2:
+                safe_print(f"Failed to load workbook even without VBA: {str(wb_error2)}")
+                # If loading fails, try creating a new Excel file as fallback
+                return create_new_excel_file(output_path, data)
         
         # Try to use the specified sheet name, fallback to active sheet if not found
         try:
@@ -693,9 +703,23 @@ def update_excel_with_data(excel_path, sheet_name, data, existing_file_path=None
         # Save the workbook to the new location
         try:
             safe_print(f"Saving updated Excel file to: {output_path}")
+            
+            # Ensure we're saving as .xlsx format to avoid format issues
+            if not output_path.endswith('.xlsx'):
+                name, ext = os.path.splitext(output_path)
+                output_path = name + '.xlsx'
+                safe_print(f"Changed output format to .xlsx: {output_path}")
+            
+            # Save with explicit format
             wb.save(output_path)
-            safe_print(f"Saved to: {output_path}")
-            safe_print(f"\n✅ Successfully updated row {new_row} in the Excel file")
+            
+            # Verify the file was created and has content
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                safe_print(f"Saved to: {output_path}")
+                safe_print(f"\n✅ Successfully updated row {new_row} in the Excel file")
+            else:
+                raise Exception("File was not created properly or is empty")
+                
         except Exception as save_error:
             safe_print(f"Error saving workbook: {str(save_error)}")
             # If saving fails, try creating a new Excel file as fallback
@@ -731,11 +755,21 @@ def create_new_excel_file(output_path, data):
             ws[f"{col_letter}2"] = value
         
         # Save the workbook to the new location
-        new_output_path = output_path.replace('.xlsm', '.xlsx').replace('.xls', '.xlsx')
-        wb.save(new_output_path)
-        safe_print(f"Saved new Excel file to: {new_output_path}")
-        safe_print(f"Saved to: {new_output_path}")
-        return new_output_path
+        try:
+            # Ensure we're saving as .xlsx format to avoid format issues
+            if not output_path.endswith('.xlsx'):
+                name, ext = os.path.splitext(output_path)
+                output_path = name + '.xlsx'
+                safe_print(f"Changed output format to .xlsx: {output_path}")
+                
+            safe_print(f"Saving new Excel file to: {output_path}")
+            wb.save(output_path)
+            safe_print(f"Saved new Excel file to: {output_path}")
+            safe_print(f"Saved to: {output_path}")
+            return output_path
+        except Exception as e:
+            safe_print(f"Error creating fallback Excel file: {str(e)}")
+            raise
     except Exception as e:
         safe_print(f"Error creating fallback Excel file: {str(e)}")
         raise
