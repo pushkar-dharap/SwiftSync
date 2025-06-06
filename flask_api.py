@@ -112,31 +112,31 @@ def process_invoice():
             # Log the file details
             logger.info(f"Sending file: {download_filename} (original: {os.path.basename(output_path)}, size: {file_size} bytes)")
             
-            # Create a file-like object to stream the file
-            def generate():
-                with open(output_path, 'rb') as f:
-                    yield from f
-                
-                # Clean up the file after streaming is complete
-                try:
-                    if os.path.exists(output_path):
-                        os.remove(output_path)
-                        logger.info(f"Cleaned up output file: {output_path}")
-                except Exception as e:
-                    logger.warning(f"Warning: Could not clean up file {output_path}: {str(e)}")
+            # Read the file content
+            with open(output_path, 'rb') as f:
+                file_content = f.read()
             
-            # Create the response with the generator
+            # Create the response
             response = app.response_class(
-                generate(),
-                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                headers={
-                    'Content-Disposition': f'attachment; filename="{download_filename}"',
-                    'Content-Length': str(file_size),
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
+                response=file_content,
+                status=200,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
+            
+            # Set headers
+            response.headers['Content-Disposition'] = f'attachment; filename="{download_filename}"'
+            response.headers['Content-Length'] = file_size
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            
+            # Clean up the file after sending the response
+            try:
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+                    logger.info(f"Cleaned up output file: {output_path}")
+            except Exception as e:
+                logger.warning(f"Warning: Could not clean up file {output_path}: {str(e)}")
             
             return response
             
