@@ -103,35 +103,40 @@ def process_invoice():
             if not os.path.exists(output_path) or not os.path.isfile(output_path):
                 raise FileNotFoundError(f"Output file not found at {output_path}")
             
-            # Get the filename for the download
-            filename = os.path.basename(output_path)
+            # Get the original Excel filename and create the download filename
+            original_filename = os.path.basename(excel_file.filename)  # Get the original uploaded filename
+            name, ext = os.path.splitext(original_filename)
+            download_filename = f"updated_{name}{ext}"
             file_size = os.path.getsize(output_path)
             
             # Log the file details
-            logger.info(f"Sending file: {filename} (size: {file_size} bytes)")
+            logger.info(f"Sending file: {download_filename} (original: {os.path.basename(output_path)}, size: {file_size} bytes)")
             
-            # Use send_file which handles file streaming and cleanup automatically
-            response = send_file(
-                output_path,
-                as_attachment=True,
-                download_name=filename,
-                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-            
-            # Set cache control headers
-            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
-            
-            # Clean up the file after the response is sent
-            @response.call_on_close
-            def cleanup():
+            # Create a file-like object to stream the file
+            def generate():
+                with open(output_path, 'rb') as f:
+                    yield from f
+                
+                # Clean up the file after streaming is complete
                 try:
                     if os.path.exists(output_path):
                         os.remove(output_path)
                         logger.info(f"Cleaned up output file: {output_path}")
                 except Exception as e:
                     logger.warning(f"Warning: Could not clean up file {output_path}: {str(e)}")
+            
+            # Create the response with the generator
+            response = app.response_class(
+                generate(),
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{download_filename}"',
+                    'Content-Length': str(file_size),
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            )
             
             return response
             
