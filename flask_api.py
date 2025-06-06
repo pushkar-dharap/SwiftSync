@@ -99,12 +99,30 @@ def process_invoice():
         
         # Return the file directly in the response
         try:
-            response = send_file(
-                output_path,
-                as_attachment=True,
-                download_name=os.path.basename(output_path),
-                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            # First, ensure the file exists and is readable
+            if not os.path.exists(output_path) or not os.path.isfile(output_path):
+                raise FileNotFoundError(f"Output file not found at {output_path}")
+                
+            # Get the filename for the download
+            filename = os.path.basename(output_path)
+            
+            # Create response with file data
+            with open(output_path, 'rb') as f:
+                file_data = f.read()
+                
+            response = app.response_class(
+                response=file_data,
+                status=200,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                direct_passthrough=True
             )
+            
+            # Set headers to force download
+            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response.headers['Content-Length'] = len(file_data)
+            
+            # Log the response details
+            logger.info(f"Sending file: {filename} (size: {len(file_data)} bytes)")
             
             # Schedule cleanup of the output file after sending the response
             try:
