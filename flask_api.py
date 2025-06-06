@@ -96,16 +96,35 @@ def process_invoice():
             logger.info("Cleaned up temporary files")
         except Exception as e:
             logger.warning(f"Warning: Could not clean up temporary files: {str(e)}")
-            
-        # Generate a URL for downloading the result
-        download_url = f"/download/{os.path.basename(output_path)}"
         
-        return jsonify({
-            "status": "success",
-            "message": "Processing completed successfully",
-            "output_file": os.path.basename(output_path),
-            "download_url": download_url
-        })
+        # Return the file directly in the response
+        try:
+            response = send_file(
+                output_path,
+                as_attachment=True,
+                download_name=os.path.basename(output_path),
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            
+            # Schedule cleanup of the output file after sending the response
+            try:
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+                    logger.info(f"Cleaned up output file: {output_path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Warning: Could not clean up output file {output_path}: {str(cleanup_error)}")
+                
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error sending file: {str(e)}", exc_info=True)
+            # Try to clean up the output file if sending failed
+            try:
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+            except:
+                pass
+            raise  # Re-raise the exception to be handled by the outer try-except
 
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}", exc_info=True)
