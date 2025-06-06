@@ -21,7 +21,7 @@ CORS(app)  # Enable CORS for all routes
 # Configuration
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads')
-app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'xlsx', 'xls'}
+app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'xlsx', 'xls','xlsm', 'PDF'}
 
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
