@@ -485,7 +485,7 @@ def classify_invoice_with_claude(invoice_text, coa_sheet, structure, api_key):
     # Call the Claude API
     client = anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
-        model="claude-3-opus-20240229",
+        model="claude-3-7-sonnet-20250219",
         max_tokens=4000,
         temperature=0,
         system=system_prompt,

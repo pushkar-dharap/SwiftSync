@@ -30,6 +30,19 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+@app.route('/', methods=['GET'])
+def index():
+    """Root endpoint with API information"""
+    return jsonify({
+        "status": "running",
+        "message": "SwiftSync API is running",
+        "endpoints": {
+            "health": "/health (GET) - Check API health",
+            "process": "/process (POST) - Process invoice and Excel files",
+            "download": "/downloads/<filename> (GET) - Download processed files"
+        }
+    }), 200
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
